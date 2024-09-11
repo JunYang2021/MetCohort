@@ -158,6 +158,7 @@ sample processing, users are advised to adjust this value lower.
 _**Targeted extraction (optional)**_: A table of targeted extraction compounds in 
 xlsx format. Users can optionally upload a table here for targeted extraction. 
 The detailed style of the table is shown below:
+
 ![](./images/tar_emp.png "Targeted Extraction")
 
 
