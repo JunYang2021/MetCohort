@@ -16,6 +16,13 @@ subsequent analysis.
 
 Detailed information about the algorithm and parameters are available in our article.
 
+## Table of Contents
+
+- [Software interface](#Software interface)
+- [User guide](#User guide)
+- [Parameters introduction](#Parameters introduction)
+- [The importance of raw data alignment](#The importance of raw data alignment)
+
 ## Software interface
 
 Data import:
@@ -65,7 +72,9 @@ QC files, which determine the construction of ROI matrix and ranges of features.
 select all the files as QC or only the representative files. For some experiments having 
 blank or undesired signal at the beginning or ending of chromatographic gradient, users 
 can uncheck the box of Auto range and set the real retention time in Crop retention time 
-in seconds.
+in seconds. 
+
+_Note_: The files need to be in the same folder.
 
 
 ### Data alignment
@@ -161,6 +170,9 @@ The detailed style of the table is shown below:
 
 ![](./images/tar_emp.png "Targeted Extraction")
 
+_Note_: The feature detection of isomers or coeluting compounds in targeted extraction
+may be worse than the untargeted mode. 
+
 
 ### View Results
 After the feature detection stage, users can view the results on the View results
@@ -172,5 +184,48 @@ using the button Export feature data (*.xlsx) in the window. Additionally, users
 export and import the feature data within the window to save features and view them
 in future sessions with Export feature data (*.pkd) and Import feature data (*.pkd)
 buttons.
+
+
+## The importance of raw data alignment
+MetCohort performs a raw data-based alignment process before the feature detection. The quality
+of the alignment can significantly influence feature detection and integration.
+Therefore, it is necessary to manually inspect the alignment results during processing.
+Users are encouraged to export the plot of retention time deviation during the data alignment
+stage. The plot of retention time deviation will be included the exported file
+directory as an HTML file. The plot serves two primary purposes:
+
+### Identifying abnormal files
+Inspecting the deviation plot can help identify abnormal files. In most cases, the 
+retention time deviation is near 0 or exhibits a regular fluctuation. If extreme deviations
+are observed in certain files, further investigation is necessary. Possible causes could include
+differences in chromatographic conditions or inappropriate ROAs (Regions of Alignment) used for alignment.
+In the HTML file exported from
+MetCohort, users can hover the cursor over the abnormal deviation line to identify the specific file. 
+For instance, in one analysis, the following plot was generated, and
+the backend displayed warnings about LOWESS fitting. These warnings indicate issues with local matching.
+Although they do not interrupt the workflow, they can lead to incorrect results. Upon examining the
+TICs (Total Ion Chromatograms) of the files, it was found that the abnormal files contained
+significantly noisy data. Identifying such abnormal files is crucial for large-scale sample analyses.
+
+![](./images/identifying_abnormal.png "Identifying abnormal files")
+
+### Quality of data alignment impacts feature detection results
+
+Effective data alignment is a prerequisite for obtaining reliable results, as feature detection 
+is based on the aligned data. Although the algorithm of feature detection in ROI matrix doesn't strictly
+divide the peak boundaries in a same position (we have a dynamic border identification in the ROI matrix), 
+good alignment can make the true features being more easily identified and integrated. A bad data alignment can
+reduce the feature numbers and negatively affect feature integration. The following image
+demonstrates how data alignment impacts the quality of feature detection.
+
+We can check the effectiveness
+of data alignment from the retention time deviation plot. If the time deviation  does not correspond to the actual
+retention time shift along the time axis, the data are not well aligned. Adjusting parameters, such as the reference file
+or the number of ROAs, may improve the results.
+
+If it is hard to find suitable parameters for data alignment and only little deviation is in the original data, 
+it may be advisable to proceed with feature detection without performing alignment.
+
+![](./images/alignment_effects.png "Alignment effects")
 
 

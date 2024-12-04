@@ -150,30 +150,33 @@ def local_match_no_dtw(file1_roas, file2_eics, per=68.27):
     file1_rt_u, file1_mz_u, file2_rt_u, file2_mz_u = [], [], [], []
     pn = 5  # Candidate peak numbers is 5
     min_rt, max_rt = file2_eics['rt'][0], file2_eics['rt'][-1]
+    between_file_fold = 10  # Control the number of high quality ROAs
 
-    for i in range(len(file1_roas)):
-        if np.max(file2_eics['intensity'][i]) < file1_roas[i].i_max / 10:
-            continue
-        corr = signal.correlate(file2_eics['intensity'][i], file1_roas[i].i, mode='same')
-        peaks, _ = signal.find_peaks(corr)
-        sorted_peaks = sorted(peaks, key=lambda h: corr[h], reverse=True)
-        if len(sorted_peaks) >= 2 and corr[sorted_peaks[0]] > corr[sorted_peaks[1]] * 5:
-            file1_rt.append(file1_roas[i].rt[file1_roas[i].i_max_id])
-            file1_mz.append(file1_roas[i].mzmean)
-            file2_rt.append(file2_eics['rt'][sorted_peaks[0]])
-            file2_mz.append(file2_eics['mz'][i][sorted_peaks[0]])
-        elif len(sorted_peaks) == 1:
-            file1_rt.append(file1_roas[i].rt[file1_roas[i].i_max_id])
-            file1_mz.append(file1_roas[i].mzmean)
-            file2_rt.append(file2_eics['rt'][sorted_peaks[0]])
-            file2_mz.append(file2_eics['mz'][i][sorted_peaks[0]])
-        elif len(sorted_peaks) >= 2:
-            file1_rt_u.append(file1_roas[i].rt[file1_roas[i].i_max_id])
-            file1_mz_u.append(file1_roas[i].mzmean)
-            file2_rt_u.append(
-                [file2_eics['rt'][sorted_peaks[j]] if j < len(sorted_peaks) else -1000 for j in range(pn)])
-            file2_mz_u.append(
-                [file2_eics['mz'][i][sorted_peaks[j]] if j < len(sorted_peaks) else -1000 for j in range(pn)])
+    while len(file1_rt) == 0:
+        for i in range(len(file1_roas)):
+            if np.max(file2_eics['intensity'][i]) < file1_roas[i].i_max / between_file_fold:
+                continue
+            corr = signal.correlate(file2_eics['intensity'][i], file1_roas[i].i, mode='same')
+            peaks, _ = signal.find_peaks(corr)
+            sorted_peaks = sorted(peaks, key=lambda h: corr[h], reverse=True)
+            if len(sorted_peaks) >= 2 and corr[sorted_peaks[0]] > corr[sorted_peaks[1]] * 5:
+                file1_rt.append(file1_roas[i].rt[file1_roas[i].i_max_id])
+                file1_mz.append(file1_roas[i].mzmean)
+                file2_rt.append(file2_eics['rt'][sorted_peaks[0]])
+                file2_mz.append(file2_eics['mz'][i][sorted_peaks[0]])
+            elif len(sorted_peaks) == 1:
+                file1_rt.append(file1_roas[i].rt[file1_roas[i].i_max_id])
+                file1_mz.append(file1_roas[i].mzmean)
+                file2_rt.append(file2_eics['rt'][sorted_peaks[0]])
+                file2_mz.append(file2_eics['mz'][i][sorted_peaks[0]])
+            elif len(sorted_peaks) >= 2:
+                file1_rt_u.append(file1_roas[i].rt[file1_roas[i].i_max_id])
+                file1_mz_u.append(file1_roas[i].mzmean)
+                file2_rt_u.append(
+                    [file2_eics['rt'][sorted_peaks[j]] if j < len(sorted_peaks) else -1000 for j in range(pn)])
+                file2_mz_u.append(
+                    [file2_eics['mz'][i][sorted_peaks[j]] if j < len(sorted_peaks) else -1000 for j in range(pn)])
+        between_file_fold *= 2
     file1_rt, file2_rt, file1_mz, file2_mz = np.array(file1_rt), np.array(file2_rt), np.array(file1_mz), np.array(
         file2_mz)
     file1_rt_u, file2_rt_u, file1_mz_u, file2_mz_u = np.array(file1_rt_u), np.array(file2_rt_u), np.array(

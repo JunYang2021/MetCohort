@@ -194,6 +194,7 @@ class PeakDetectionThread(QThread):
     progress_signal = pyqtSignal(int)
     result_signal = pyqtSignal(object)
     finished_signal = pyqtSignal()
+    activate_progress_signal = pyqtSignal()
 
     def __init__(self, min_files_zero, delta_mz,
                  continuous_points, dropped_points, exps,
@@ -221,16 +222,16 @@ class PeakDetectionThread(QThread):
             for file in self.file_list:
                 self.exps[file].bin_spectrum = None
 
-            self.update_signal.emit('ROI detecting in {0} QC files (Parallel)...'.format(len(self.qc_file_list)))
+            self.update_signal.emit('ROI detecting in {0} QC files (Parallel)...(This step may be time consuming.)'.format(len(self.qc_file_list)))
 
             with mp.Pool(max(1, mp.cpu_count() // 4), maxtasksperchild=10) as pool:
                 range_data = pool.starmap(find_roi_range, [(self.exps[file_path], self.file_list,
                                                             self.delta_mz, self.continuous_points, self.dropped_points)
                                                            for file_path in self.qc_file_list])
-            self.progress_signal.emit(100)
+            # self.progress_signal.emit(100)
             range_data = list(itertools.chain.from_iterable(range_data))
 
-            self.update_signal.emit('ROI grouping...')
+            self.update_signal.emit('ROI grouping...(This step may be time consuming.)')
             range_data = pd.DataFrame(range_data).astype({'file': 'int16', 'mz': 'float32',
                                                           't0': 'float32', 't1': 'float32'})
             range_data = grouping_roi_range(range_data,
@@ -239,10 +240,11 @@ class PeakDetectionThread(QThread):
             self.update_signal.emit('QC ROI detection and grouping finished. '
                                     '{0} batchROIs found.'.format(len(range_data)))
             self.update_signal.emit('Untargeted feature detection on ROI matrix...')
+            self.activate_progress_signal.emit()
             range_data = [tuple(x) for x in range_data.to_numpy()]
             L= len(range_data)
             peaks_res = []
-            self.progress_signal.emit(0)
+            # self.progress_signal.emit(0)
             for _t, range_row in enumerate(range_data):
                 peaks_res.append(peak_detection_roi_matrix(self.exps, range_row, self.file_list,
                                                            self.ref_file, self.delta_mz,
@@ -417,6 +419,10 @@ class MainWindow(QtWidgets.QMainWindow):
             self.file_loader.finished_signal.connect(self.start_correcting)
         self.file_loader.start()
 
+    def show_progress_bar(self):
+        self.progressBar.setValue(0)
+        self.progressBar.show()
+
     def hide_progress_bar(self):
         self.progressBar.hide()
 
@@ -559,12 +565,13 @@ class MainWindow(QtWidgets.QMainWindow):
                                                          self.qc_file_list,
                                                          lamda,
                                                          tar_cpd)
-        self.progressBar.setValue(0)
-        self.progressBar.show()
+        # self.progressBar.setValue(0)
+        # self.progressBar.show()
         self.peak_detection_thread.update_signal.connect(self.textEdit.append)
         self.peak_detection_thread.result_signal.connect(self.populate_peaks_table)
         self.peak_detection_thread.progress_signal.connect(self.progressBar.setValue)
         self.peak_detection_thread.finished_signal.connect(self.hide_progress_bar)
+        self.peak_detection_thread.activate_progress_signal.connect(self.show_progress_bar)
         self.peak_detection_thread.start()
 
     def populate_peaks_table(self, peaks_res):
@@ -630,6 +637,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if fileName:
             if not fileName.endswith('.xlsx'):  # Add .pkd extension if it's not there
                 fileName += '.xlsx'
+            self.textEdit.append("Start exporting. This process may be time-consuming. Don't close the window!")
             df.to_excel(fileName, index=False)
             self.textEdit.append('{0} exported successfully.'.format(fileName))
 
@@ -647,6 +655,7 @@ class MainWindow(QtWidgets.QMainWindow):
             import pickle
             if not fileName.endswith('.pkd'):  # Add .pkd extension if it's not there
                 fileName += '.pkd'
+            self.textEdit.append("Start exporting. This process may be time-consuming. Don't close the window!")
             with open(fileName, 'wb') as f:
                 pickle.dump(self.peaks_res, f)
                 pickle.dump(self.file_list, f)
@@ -658,6 +667,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if file:
             import pickle
             try:
+                self.textEdit.append("Start importing. This process may be time-consuming. Don't close the window!")
                 with open(file, 'rb') as f:
                     peaks_res = pickle.load(f)
                     self.file_list = pickle.load(f)
