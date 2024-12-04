@@ -18,10 +18,10 @@ Detailed information about the algorithm and parameters are available in our art
 
 ## Table of Contents
 
-- [Software interface](#Software interface)
-- [User guide](#User guide)
-- [Parameters introduction](#Parameters introduction)
-- [The importance of raw data alignment](#The importance of raw data alignment)
+- [Software interface](##Software interface)
+- [User guide](##User guide)
+- [Parameters introduction](##Parameters introduction)
+- [The importance of raw data alignment](##The importance of raw data alignment)
 
 ## Software interface
 
