@@ -74,7 +74,7 @@ blank or undesired signal at the beginning or ending of chromatographic gradient
 can uncheck the box of Auto range and set the real retention time in Crop retention time 
 in seconds. 
 
-_Note_: The files need to be in the same folder.
+_Note_: The files need to be centroided and in the same folder.
 
 
 ### Data alignment
