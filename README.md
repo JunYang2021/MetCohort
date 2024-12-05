@@ -1,6 +1,12 @@
 # MetCohort
 ![](./images/logo.png "MetCohort")
 
+![GitHub License](https://img.shields.io/github/license/JunYang2021/MetCohort)
+![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/JunYang2021/MetCohort/total?color=green)
+![GitHub watchers](https://img.shields.io/github/watchers/JunYang2021/MetCohort?logoColor=%231c9099&color=1c9099)
+
+
+
 MetCohort is an untargeted liquid chromatography-mass spectrometry 
 (LC-MS) data processing tool for large-scale metabolomics and exposomics. MetCohort can 
 realize automatic correction of retention time and m/z between samples and precise 
@@ -19,8 +25,8 @@ Detailed information about the algorithm and parameters are available in our art
 ## Table of Contents
 
 - [Software interface](#Software-interface)
-- [User guide (Windows executable program)](#User-guide-(Windows-executable-program))
-- [User guide (Run from source code)](#User-guide-(Run-from-source-code))
+- [User guide (Windows executable program)](#User-guide-Windows-executable-program)
+- [User guide (Run from source code)](#User-guide-Run-from-source-code)
 - [Parameters introduction](#Parameters-introduction)
 - [The importance of raw data alignment](#The-importance-of-raw-data-alignment)
 
