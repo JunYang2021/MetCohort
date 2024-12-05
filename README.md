@@ -19,7 +19,8 @@ Detailed information about the algorithm and parameters are available in our art
 ## Table of Contents
 
 - [Software interface](#Software-interface)
-- [User guide](#User-guide)
+- [User guide (Windows executable program)](#User-guide-(Windows-executable-program))
+- [User guide (Run from source code)](#User-guide-(Run-from-source-code))
 - [Parameters introduction](#Parameters-introduction)
 - [The importance of raw data alignment](#The-importance-of-raw-data-alignment)
 
@@ -35,7 +36,11 @@ Results visualization:
 ![](./images/4.png "Results visualization")
 
 
-## User guide
+## User guide (Windows executable program)
+Download the released .exe program from [Releases](https://github.com/JunYang2021/MetCohort/releases/download/MetCohort_exe/MetCohort_win11_x64_exe.zip) page.
+Unzip the file and open the `MetCohort.exe` file.
+
+## User guide (Run from source code)
 ### Step 1: Download source code of MetCohort
 Download source code to local system from [Github](https://github.com/JunYang2021/MetCohort) page.
 
