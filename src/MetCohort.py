@@ -8,12 +8,15 @@ import pandas as pd
 from PyQt5 import QtWidgets, uic, QtCore
 from PyQt5.QtCore import QThread, pyqtSignal
 from PyQt5.QtWidgets import QFileDialog, QMessageBox, QTableWidgetItem, QCheckBox
+from PyQt5.QtGui import QIcon
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 # from memory_profiler import profile
 from get_chromatograms import roa_construction, find_roi_range
 from batch_roi import grouping_roi_range, peak_detection_roi_matrix
 from multi_processing import load_data_parallel, align_data_parallel
+
+mp.freeze_support()
 
 
 def sort_key(x):
@@ -66,7 +69,7 @@ class FileLoader(QThread):
                 if max_mz < _max:
                     max_mz = _max
 
-            self.update_signal.emit("Loading {0} files...".format(length))
+            self.update_signal.emit("Loading {0} files (Parallel)... (This step may be time consuming)".format(length))
 
             with mp.Pool(max(1, mp.cpu_count() // 4), maxtasksperchild=10) as pool:
                 results_list = pool.starmap(load_data_parallel, [(file_path, min_mz, max_mz, self.rt_filter)
@@ -89,6 +92,8 @@ class CorrectionThread(QThread):
     update_signal = pyqtSignal(str)
     progress_signal = pyqtSignal(int)
     finished_signal = pyqtSignal()
+    hide_bar_signal = pyqtSignal()
+    activate_progress_signal = pyqtSignal()
 
     def __init__(self, ref_file, roa_window_width, delta_mz_roa, intensity_threshold_roa,
                  delta_mz_eic, plot, write_new_files, new_file_directory, exps, file_list):
@@ -119,8 +124,9 @@ class CorrectionThread(QThread):
             if len(roas) < 100:
                 self.update_signal.emit('Warning: Less than 100 ROAs were found. Correction may be inaccurate.')
             mz_list = [i.mzmean for i in roas]
+            self.hide_bar_signal.emit()
 
-            self.update_signal.emit('Retention time alignment to Reference file...')
+            self.update_signal.emit('Retention time alignment to Reference file (Parallel)... (This step may be time consuming)')
 
             with mp.Pool(max(1, mp.cpu_count() // 4), maxtasksperchild=10) as pool:
                 aligned_res = pool.starmap(align_data_parallel, [(self.exps[file_path], self.exps[self.ref_file],
@@ -143,9 +149,10 @@ class CorrectionThread(QThread):
                 pic_path = os.path.join(self.new_file_directory, f'Alignment results{timestamp}.html')
                 output_file(pic_path)
 
-                p = figure(plot_width=1200, plot_height=675, title="Alignment Results")
+                p = figure(width=1200, height=675, title="Alignment Results")
                 colors = viridis(256)
                 self.update_signal.emit('Making plot...')
+                self.activate_progress_signal.emit()
                 for i, path in enumerate(self.file_list):
                     if path != self.ref_file:
                         y_values = self.exps[path].original_time - self.exps[path].corrected_time
@@ -168,7 +175,7 @@ class CorrectionThread(QThread):
                 input_filename = [os.path.basename(i) for i in self.file_list]
                 new_path = [os.path.join(self.new_file_directory, i) for i in input_filename]
                 self.update_signal.emit('Writing new files to {0}...'.format(self.new_file_directory))
-                self.progress_signal.emit(0)
+                self.activate_progress_signal.emit()
                 for i, path in enumerate(self.file_list):
                     self.exps[path].save_file(new_path[i])
                     self.progress_signal.emit(int((i + 1) * 100 / L))
@@ -222,7 +229,7 @@ class PeakDetectionThread(QThread):
             for file in self.file_list:
                 self.exps[file].bin_spectrum = None
 
-            self.update_signal.emit('ROI detecting in {0} QC files (Parallel)...(This step may be time consuming.)'.format(len(self.qc_file_list)))
+            self.update_signal.emit('ROI detecting in {0} QC files (Parallel)...(This step may be time consuming)'.format(len(self.qc_file_list)))
 
             with mp.Pool(max(1, mp.cpu_count() // 4), maxtasksperchild=10) as pool:
                 range_data = pool.starmap(find_roi_range, [(self.exps[file_path], self.file_list,
@@ -231,7 +238,7 @@ class PeakDetectionThread(QThread):
             # self.progress_signal.emit(100)
             range_data = list(itertools.chain.from_iterable(range_data))
 
-            self.update_signal.emit('ROI grouping...(This step may be time consuming.)')
+            self.update_signal.emit('ROI grouping...(This step may be time consuming)')
             range_data = pd.DataFrame(range_data).astype({'file': 'int16', 'mz': 'float32',
                                                           't0': 'float32', 't1': 'float32'})
             range_data = grouping_roi_range(range_data,
@@ -284,7 +291,9 @@ class PeakDetectionThread(QThread):
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
-        uic.loadUi("../ui/main_window.ui", self)
+        uic.loadUi("main_window.ui", self)
+        self.setWindowIcon(QIcon('favicon.ico'))
+
         self.setMinimumSize(1600, 1200)
         self.progressBar.hide()
 
@@ -341,6 +350,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.lineEdit_8.setEnabled(False)
         self.checkBox.setChecked(True)
         self.checkBox.stateChanged.connect(self.toggle_crop_rt)
+
+        # Set Columns of files
+        self.tableWidget.setColumnWidth(0, 900)
+        self.tableWidget.setColumnWidth(1, 100)
 
     def change_page(self, i):
         self.button_list[i].setChecked(True)
@@ -490,6 +503,8 @@ class MainWindow(QtWidgets.QMainWindow):
             else:
                 self.correction_thread.finished_signal.connect(self.hide_progress_bar)
             self.correction_thread.progress_signal.connect(self.progressBar.setValue)
+            self.correction_thread.activate_progress_signal.connect(self.show_progress_bar)
+            self.correction_thread.hide_bar_signal.connect(self.hide_progress_bar)
             self.correction_thread.start()
         except Exception as e:
             import traceback
