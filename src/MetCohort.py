@@ -1,8 +1,15 @@
 # This version use DTW for profile alignment background.
 # This version use pyopenms for LC-MS raw data reading and writing
+
+import os
+import sys
+if getattr(sys, 'frozen', False):  # Running as a PyInstaller executable
+    base_path = sys._MEIPASS  # PyInstaller's temporary directory
+    openms_data_path = os.path.join(base_path, 'share', 'OpenMS')
+    os.environ['OPENMS_DATA_PATH'] = openms_data_path
+
 import itertools
 import multiprocessing as mp
-import os
 from pyopenms import *
 import pandas as pd
 from PyQt5 import QtWidgets, uic, QtCore
