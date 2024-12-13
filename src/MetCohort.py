@@ -70,11 +70,12 @@ class FileLoader(QThread):
                 MzXMLFile().load(self.file_list[0], temp_p)
             min_mz, max_mz = np.inf, -1
             for scan in temp_p:
-                _min, _max = scan.get_peaks()[0].min(), scan.get_peaks()[0].max()
-                if min_mz > _min:
-                    min_mz = _min
-                if max_mz < _max:
-                    max_mz = _max
+                if scan.get_peaks()[0].size:
+                    _min, _max = scan.get_peaks()[0].min(), scan.get_peaks()[0].max()
+                    if min_mz > _min:
+                        min_mz = _min
+                    if max_mz < _max:
+                        max_mz = _max
 
             self.update_signal.emit("Loading {0} files (Parallel)... (This step may be time consuming)".format(length))
 
