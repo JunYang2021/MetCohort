@@ -104,7 +104,8 @@ class CorrectionThread(QThread):
     activate_progress_signal = pyqtSignal()
 
     def __init__(self, ref_file, roa_window_width, delta_mz_roa, intensity_threshold_roa,
-                 delta_mz_eic, plot, write_new_files, new_file_directory, exps, file_list):
+                 delta_mz_eic, plot, write_new_files, new_file_directory, exps, file_list,
+                 blank_file_list):
         super(CorrectionThread, self).__init__()
         self.ref_file = ref_file
         self.roa_window_width = roa_window_width
@@ -116,6 +117,7 @@ class CorrectionThread(QThread):
         self.new_file_directory = new_file_directory
         self.exps = exps
         self.file_list = file_list
+        self.blank_file_list = blank_file_list
 
     def run(self):
         global roas
@@ -138,7 +140,7 @@ class CorrectionThread(QThread):
 
             with mp.Pool(max(1, mp.cpu_count() // 4), maxtasksperchild=10) as pool:
                 aligned_res = pool.starmap(align_data_parallel, [(self.exps[file_path], self.exps[self.ref_file],
-                                                                  roas, mz_list, self.delta_mz_eic)
+                                                                  roas, mz_list, self.delta_mz_eic, self.blank_file_list)
                                                                  for file_path in self.file_list])
             for file_path, result in zip(self.file_list, aligned_res):
                 self.exps[file_path] = result
@@ -323,6 +325,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.peak_detection_thread = None
 
         self.qc_file_list = []
+        self.blank_file_list = []
 
         # Connect Browse and Start Importing buttons
         self.pushButton_5.clicked.connect(self.browse_files)
@@ -362,6 +365,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # Set Columns of files
         self.tableWidget.setColumnWidth(0, 900)
         self.tableWidget.setColumnWidth(1, 100)
+        self.tableWidget.setColumnWidth(2, 100)
 
     def change_page(self, i):
         self.button_list[i].setChecked(True)
@@ -370,6 +374,12 @@ class MainWindow(QtWidgets.QMainWindow):
     def browse_files(self):
         self.file_list.clear()
         self.qc_file_list.clear()
+        self.blank_file_list.clear()
+        self.exps = {}
+        self.peaks_res = None
+        self.file_loader = None
+        self.correction_thread = None
+        self.peak_detection_thread = None
         self.comboBox.clear()
         self.comboBox_4.clear()
         self.tableWidget.setRowCount(0)
@@ -393,6 +403,12 @@ class MainWindow(QtWidgets.QMainWindow):
                 lambda state, current_file=file: self.update_qc_file_list(state, current_file))
             self.tableWidget.setCellWidget(row_position, 1, qc_checkbox)
 
+            blank_checkbox = QCheckBox()
+            blank_checkbox.setChecked(False)  # initially not a QC file
+            blank_checkbox.stateChanged.connect(
+                lambda state, current_file=file: self.update_blank_file_list(state, current_file))
+            self.tableWidget.setCellWidget(row_position, 2, blank_checkbox)
+
     def update_qc_file_list(self, state, file):
         if state == QtCore.Qt.Checked:
             if file not in self.qc_file_list:
@@ -406,6 +422,14 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.comboBox.removeItem(index)
                 index_4 = self.comboBox_4.findText(file)
                 self.comboBox_4.removeItem(index_4)
+
+    def update_blank_file_list(self, state, file):
+        if state == QtCore.Qt.Checked:
+            if file not in self.blank_file_list:
+                self.blank_file_list.append(file)
+        elif state == QtCore.Qt.Unchecked:
+            if file in self.blank_file_list:
+                self.blank_file_list.remove(file)
 
     def toggle_crop_rt(self, state):
         if state == 0:  # Unchecked state
@@ -501,7 +525,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 write_new_files,
                 new_file_directory,
                 self.exps,
-                self.file_list
+                self.file_list,
+                self.blank_file_list
             )
             self.progressBar.setValue(0)
             self.correction_thread.update_signal.connect(self.textEdit.append)

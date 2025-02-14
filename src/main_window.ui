@@ -137,7 +137,7 @@
            <item>
             <widget class="QTableWidget" name="tableWidget">
              <property name="columnCount">
-              <number>2</number>
+              <number>3</number>
              </property>
              <attribute name="horizontalHeaderCascadingSectionResizes">
               <bool>false</bool>
@@ -153,6 +153,11 @@
              <column>
               <property name="text">
                <string>QC</string>
+              </property>
+             </column>
+			 <column>
+              <property name="text">
+               <string>Blank</string>
               </property>
              </column>
             </widget>

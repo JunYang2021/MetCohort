@@ -8,8 +8,9 @@ def load_data_parallel(file_path, min_mz, max_mz, rt_filter=None):
     return MsFile(file_path, mzrange=(min_mz, max_mz), rt_filter=rt_filter)
 
 
-def align_data_parallel(msfile, msfile_ref, roas, roa_mz_list, delta_mz_eic, no_dtw=True):
-    if msfile.file_path != msfile_ref.file_path:
+def align_data_parallel(msfile, msfile_ref, roas, roa_mz_list, delta_mz_eic,
+                        blank_file_list, no_dtw=True):
+    if msfile.file_path != msfile_ref.file_path and msfile.file_path not in blank_file_list:
         if no_dtw:
             file2_eic_array = get_eic_array(msfile, roa_mz_list, delta_mz_eic)
             f_rt, f_mz = local_match_no_dtw(roas, file2_eic_array)
