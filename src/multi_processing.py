@@ -13,8 +13,8 @@ def align_data_parallel(msfile, msfile_ref, roas, roa_mz_list, delta_mz_eic,
     if msfile.file_path != msfile_ref.file_path and msfile.file_path not in blank_file_list:
         if no_dtw:
             file2_eic_array = get_eic_array(msfile, roa_mz_list, delta_mz_eic)
-            f_rt, f_mz = local_match_no_dtw(roas, file2_eic_array)
-            msfile.map_file(f_rt, f_mz)
+            f_rt = local_match_no_dtw(roas, file2_eic_array)
+            msfile.map_file(f_rt)
             return msfile
         else:
             rt1, rt2 = dtw(msfile_ref.original_time,
@@ -24,8 +24,8 @@ def align_data_parallel(msfile, msfile_ref, roas, roa_mz_list, delta_mz_eic,
             loess_func_1t2 = loess_dtw(rt2, rt1)
 
             file2_eic_array = get_eic_array(msfile, roa_mz_list, delta_mz_eic)
-            f_rt, f_mz = local_match(roas, file2_eic_array, loess_func_1t2)
-            msfile.map_file(f_rt, f_mz)
+            f_rt = local_match(roas, file2_eic_array, loess_func_1t2)
+            msfile.map_file(f_rt)
             return msfile
     else:
         return msfile

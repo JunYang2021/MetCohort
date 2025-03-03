@@ -78,16 +78,11 @@ class MsFile:
         self.corrected_time = self.original_time.copy()
         print(filepath, 'load.')
 
-    def map_file(self, f_rt, f_mz):
-        new_exp = []
+    def map_file(self, f_rt):
         for j, scan in enumerate(self.exp):
             old_time = self.original_time[j]
             new_time = f_rt(old_time).item()
             self.corrected_time[j] = new_time
-            new_mz = f_mz(scan.mz)
-            sorted_indices = np.argsort(new_mz)
-            new_exp.append(ms1scan(new_mz[sorted_indices], scan.i[sorted_indices]))
-        self.exp = new_exp
         print(self.file_path, 'aligned.')
         # Release memory
         # self.bin_spectrum = None

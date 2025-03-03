@@ -9,14 +9,16 @@
 
 MetCohort is an untargeted liquid chromatography-mass spectrometry 
 (LC-MS) data processing tool for large-scale metabolomics and exposomics. MetCohort can 
-realize automatic correction of retention time and m/z between samples and precise 
+realize automatic correction of retention time between samples and precise 
 feature detection. With innovative and robust data correction and feature detection algorithm,
-MetCohort have a low false positive and false negative rate simultaneously. Feature table of high quality is generated after whole procedures, which 
+MetCohort have a low false positive and false negative rate simultaneously. 
+Feature table of high quality is generated after whole procedures, which 
 significantly improves subsequent feature annotation and statistical analysis.
 
 MetCohort now supports mzML or mzXML file format of LC-MS raw data. At
 least one file need to be specified as quality control (QC) file. 
-Then data correction and peak detection should be performed in order. To optimize the processing results, adjusting some parameters 
+Then data correction and peak detection should be performed in order. To optimize the processing
+results, adjusting some parameters 
 is necessary. Finally, feature detection results are visualized in the software and can be saved for 
 subsequent analysis.
 
@@ -29,6 +31,8 @@ Detailed information about the algorithm and parameters are available in our art
 - [User guide (Run from source code)](#User-guide-Run-from-source-code)
 - [Parameters introduction](#Parameters-introduction)
 - [The importance of raw data alignment](#The-importance-of-raw-data-alignment)
+- [Potential solutions for poor alignment](#Potential-solutions-for-poor-alignment)
+- [Important notes](#Important-notes)
 
 ## Software interface
 
@@ -90,10 +94,10 @@ _Note_: The files need to be centroided and in the same folder.
 
 ### Data alignment
 In Data Alignment stage, users should select one reference file from labelled QC files 
-for ROA detection. Related parameters are shown below:
+for ROA detection. Changing the reference file may change the alignment results. Related parameters are shown below:
 
 
-_**Width of ROA window**_: The time width of the ROA window. Default is 30 seconds.
+_**Width of ROA window**_: The time width of the ROA window. Default is 30 seconds. If the dead time is less than 30 s, it should be reduced.
 
 
 _**Allowed delta m/z of ROA**_: Allowed m/z deviation in the process of ROA detection. 
@@ -105,7 +109,7 @@ _**Intensity threshold of ROA**_: An intensity coefficient to control the number
 ROAs. Specifically, the intensity at the center of a detected ROA should exceed a dynamic
 specified value, which is calculated as the current EWMA (Exponentially weighted moving 
 average) of TIC (total ion chromatograms) multiplied by the coefficient. The default 
-coefficient is 0.5%.
+coefficient is 0.5%. Lowering this value can increase the number of ROAs.
 
 
 _**Allowed delta m/z of XIC**_: Allowed m/z deviation in the process of XIC extraction. 
@@ -181,8 +185,8 @@ The detailed style of the table is shown below:
 
 ![](./images/tar_emp.png "Targeted Extraction")
 
-_Note_: The feature detection of isomers or coeluting compounds in targeted extraction
-may be worse than the untargeted mode. 
+_Note_: The feature detection of isomers or coeluting compounds and integration in targeted extraction
+may be worse than the untargeted mode.
 
 
 ### View Results
@@ -239,4 +243,31 @@ it may be advisable to proceed with feature detection without performing alignme
 
 ![](./images/alignment_effects.png "Alignment effects")
 
+## Potential solutions for poor alignment
 
+If irregular deviations appear in the deviation plot, consider the following solutions:
+1. If only a few files exhibit irregular deviations, inspect their total ion chromatograms (TIC) using instrument software 
+or publicly available tools like MZmine. If these files show significantly different elution patterns, the algorithm may 
+struggle to align them correctly.
+2. If most files show significant deviaitons that are unlikely to be real, try the following steps to adjust the parameters of data alignment:
+
+   - Look at the message box for the `"xxx ROAs found."` message, which indicates the number of detected alignment anchors.
+A normal range is approximately between **200 and 1000**; values outside this range may impact alignment performance.
+If the number is too low, decrease the **"Intensity threshold of ROA"** parameter. Otherwise, increase it.
+   - Selecting a different reference file may influence the alignment results.
+   - If the chromatographic gradient is short or the dead time is less than 30 seconds, reducing the parameter 
+**"Width of ROA window"** may improve alignment.
+   - If significant compound-level deviations occur, the algorithm may be failing under such conditions.
+3. For high-resolution mass spectrometry, m/z-related parameters generally do not require modification. 
+4. If it is difficult to find optimal data alignment parameters and the raw data has a small deviation, users can directly perform 
+feature detection without data alignment. Note that this approach may reduce the numbner of detected features, especially in large-scale samples.
+Users can lower the parameter **"Entropy coefficient"** to decrease the threshold of feature detection.
+
+
+## Important notes
+
+1. MetCohort may produce erroneous results if the data is not well-aligned. It is necessary to check the deviation plot.
+2. If poor alignment is encountered, carefully reviewing the parameters of data alignment may help adjust them for better results.
+3. The alignment algorithm is not capable of handling compound-level deviations. If such cases are frequent in the data, the results of these features should be reviewed or removed.
+4. If multiple features (more than 5) with different orders of magnitude are close in time, the lower-intensity feature may be obscured by the algorithm.
+5. We welcome any discussions, feedback, or suggestions! Feel free to open an issue or start a discussion on our [Issues](https://github.com/JunYang2021/MetCohort/issues) page.
