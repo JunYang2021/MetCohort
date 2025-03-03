@@ -75,7 +75,7 @@ With configured environment in Anaconda, MetCohort GUI can be activated with fol
 ```shell
 cd path_to_MetCohort   # the directory you downloaded MetCohort repository, windows system should drive to specific hard drive first
 cd ./src
-python main_panel.py
+python MetCohort.py
 ```
 
 
