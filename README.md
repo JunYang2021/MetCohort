@@ -22,7 +22,7 @@ results, adjusting some parameters
 is necessary. Finally, feature detection results are visualized in the software and can be saved for 
 subsequent analysis.
 
-Detailed information about the algorithm and parameters are available in our article.
+Detailed information about the algorithm and parameters are available in our article (![Anal. Chem. 2025, 97, 19, 10155–10162](https://pubs.acs.org/doi/10.1021/acs.analchem.4c04906)).
 
 ## Table of Contents
 
