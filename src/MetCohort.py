@@ -18,10 +18,12 @@ from PyQt5.QtWidgets import QFileDialog, QMessageBox, QTableWidgetItem, QCheckBo
 from PyQt5.QtGui import QIcon
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
+from matplotlib.gridspec import GridSpec
 # from memory_profiler import profile
 from get_chromatograms import roa_construction, find_roi_range
 from batch_roi import grouping_roi_range, peak_detection_roi_matrix
 from multi_processing import load_data_parallel, align_data_parallel
+from file_processing import parse_ms2_files
 
 mp.freeze_support()
 
@@ -45,6 +47,16 @@ def unique_and_sorted(peaks):  # remove replicate peaks in results
             unique_peaks.append(p)
 
     return unique_peaks
+
+
+def search_ms2_spectra(ms2_df, target_mz, target_rt, mz_tolerance=0.01, rt_tolerance=6):
+    filtered_df = ms2_df[
+        (ms2_df['precursor_mz'] >= target_mz - mz_tolerance) &
+        (ms2_df['precursor_mz'] <= target_mz + mz_tolerance) &
+        (ms2_df['retention_time'] >= target_rt - rt_tolerance) &
+        (ms2_df['retention_time'] <= target_rt + rt_tolerance)
+    ]
+    return filtered_df
 
 
 class FileLoader(QThread):
@@ -215,8 +227,8 @@ class PeakDetectionThread(QThread):
 
     def __init__(self, min_files_zero, delta_mz,
                  continuous_points, dropped_points, exps,
-                 file_list, maximum_peak_width, minimum_intensity, ref_file, qc_file_list, lamda, tar_cpd):
-        # required_points改为continuous_time, dropped_points改为dropped_time
+                 file_list, maximum_peak_width, minimum_intensity, ref_file, qc_file_list, lamda, tar_cpd,
+                 ms2_file_list):
         super(PeakDetectionThread, self).__init__()
         self.delta_mz = delta_mz
         self.continuous_points = continuous_points
@@ -230,6 +242,7 @@ class PeakDetectionThread(QThread):
         self.qc_file_list = qc_file_list
         self.lamda = lamda
         self.tar_cpd = tar_cpd  # A list of dictionaries
+        self.ms2_file_list = ms2_file_list
 
     def run(self):
         import time
@@ -287,6 +300,22 @@ class PeakDetectionThread(QThread):
             peaks_res = unique_and_sorted(peaks_res)
             print('Unique and sort peak table.')
             self.update_signal.emit('Peak detection finished. {0} peaks found.'.format(len(peaks_res)))
+            if self.ms2_file_list:
+                self.update_signal.emit('Matching MS/MS spectra for detected features in {0} files...'.format(len(self.ms2_file_list)))
+                self.progress_signal.emit(0)
+                ms2_df = parse_ms2_files(self.ms2_file_list)
+                n_ms2 = 0
+                for _t, cur_peak in enumerate(peaks_res):
+                    # Find the MS/MS spectrum in range: mz: 0.01, rt: 6 seconds (This can be adjustable)
+                    result = search_ms2_spectra(ms2_df, target_mz=cur_peak['mz'], target_rt=cur_peak['rt'], mz_tolerance=0.01, rt_tolerance=6)
+                    if not result.empty:
+                        # The order in indices is random, save all the spectra in the results
+                        cur_peak['ms2'] = result.to_dict('records')
+                        n_ms2 += 1
+                    else:
+                        cur_peak['ms2'] = None
+                    self.progress_signal.emit(int((_t + 1) * 100 / len(peaks_res)))
+                self.update_signal.emit('{0}/{1} MS/MS spectra matched...'.format(n_ms2, len(peaks_res)))
             self.result_signal.emit(peaks_res)
             print('Emit peak table.')
             self.finished_signal.emit()
@@ -326,13 +355,14 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.qc_file_list = []
         self.blank_file_list = []
+        self.ms2_file_list = []
 
         # Connect Browse and Start Importing buttons
         self.pushButton_5.clicked.connect(self.browse_files)
         self.pushButton_6.clicked.connect(self.start_importing)
 
-        self.comboBox.addItems(self.file_list)
-        self.comboBox_4.addItems(self.file_list)
+        # self.comboBox.addItems(self.file_list)
+        # self.comboBox_4.addItems(self.file_list)
 
         self.lineEdit_6.setDisabled(True)
         self.pushButton_8.setDisabled(True)
@@ -350,9 +380,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.layout_frame_2 = QtWidgets.QVBoxLayout(self.frame_2)
         self.layout_frame_2.addWidget(self.canvas)
 
-        self.pushButton_10.clicked.connect(self.export_to_excel)
+        self.pushButton_10.clicked.connect(self.export_to_csv)
         self.pushButton_11.clicked.connect(self.export_pickle)
         self.pushButton_12.clicked.connect(self.import_pickle)
+        self.pushButton_14.clicked.connect(self.export_ms2)
         self.pushButton_13.clicked.connect(self.one_click_processing)
         self.one_step_processing_active = False
 
@@ -366,6 +397,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.tableWidget.setColumnWidth(0, 900)
         self.tableWidget.setColumnWidth(1, 100)
         self.tableWidget.setColumnWidth(2, 100)
+        self.tableWidget.setColumnWidth(3, 100)
 
     def change_page(self, i):
         self.button_list[i].setChecked(True)
@@ -375,6 +407,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.file_list.clear()
         self.qc_file_list.clear()
         self.blank_file_list.clear()
+        self.ms2_file_list.clear()
         self.exps = {}
         self.peaks_res = None
         self.file_loader = None
@@ -404,10 +437,16 @@ class MainWindow(QtWidgets.QMainWindow):
             self.tableWidget.setCellWidget(row_position, 1, qc_checkbox)
 
             blank_checkbox = QCheckBox()
-            blank_checkbox.setChecked(False)  # initially not a QC file
+            blank_checkbox.setChecked(False)  # initially not a blank file
             blank_checkbox.stateChanged.connect(
                 lambda state, current_file=file: self.update_blank_file_list(state, current_file))
             self.tableWidget.setCellWidget(row_position, 2, blank_checkbox)
+
+            ms2_checkbox = QCheckBox()
+            ms2_checkbox.setChecked(False)  # initially not a ms2 file
+            ms2_checkbox.stateChanged.connect(
+                lambda state, current_file=file: self.update_ms2_file_list(state, current_file))
+            self.tableWidget.setCellWidget(row_position, 3, ms2_checkbox)
 
     def update_qc_file_list(self, state, file):
         if state == QtCore.Qt.Checked:
@@ -430,6 +469,16 @@ class MainWindow(QtWidgets.QMainWindow):
         elif state == QtCore.Qt.Unchecked:
             if file in self.blank_file_list:
                 self.blank_file_list.remove(file)
+
+    def update_ms2_file_list(self, state, file):
+        if state == QtCore.Qt.Checked:
+            if file not in self.ms2_file_list:
+                self.ms2_file_list.append(file)
+                self.file_list.remove(file)
+        elif state == QtCore.Qt.Unchecked:
+            if file in self.ms2_file_list:
+                self.ms2_file_list.remove(file)
+                self.file_list.append(file)   # ms2_files not need to be processed in file_list
 
     def toggle_crop_rt(self, state):
         if state == 0:  # Unchecked state
@@ -612,7 +661,8 @@ class MainWindow(QtWidgets.QMainWindow):
                                                          ref_file,
                                                          self.qc_file_list,
                                                          lamda,
-                                                         tar_cpd)
+                                                         tar_cpd,
+                                                         self.ms2_file_list)
         # self.progressBar.setValue(0)
         # self.progressBar.show()
         self.peak_detection_thread.update_signal.connect(self.textEdit.append)
@@ -652,16 +702,44 @@ class MainWindow(QtWidgets.QMainWindow):
             if selected_rows:
                 row = selected_rows[0].row()
                 peak = self.peaks_res[row]
-                ax = self.figure.add_subplot(111)
-                peak['group'][0].plot(peak['group'][1], ax=ax)
-            self.canvas.draw()
+                if 'ms2' not in peak or peak['ms2'] is None:
+                    ax = self.figure.add_subplot(111)
+                    peak['group'][0].plot(peak['group'][1], ax=ax)
+                    ax.set_title('Extracted ion chromatograms')
+                    ax.set_xlabel('Retention time (s)')
+                else:
+                    gs = self.figure.add_gridspec(1, 2, width_ratios=[6, 4])
+                    ax = self.figure.add_subplot(gs[0])
+                    peak['group'][0].plot(peak['group'][1], ax=ax)
+                    ax.set_title('Extracted ion chromatograms')
+                    ax.set_xlabel('Retention time (s)')
+
+                    ax1 = self.figure.add_subplot(gs[1])
+                    mz_list = peak['ms2'][0]['mz_list']
+                    intensity_list = peak['ms2'][0]['intensity_list']
+
+                    # Plot sticks (vertical lines)
+                    ax1.vlines(mz_list, [0], intensity_list, color='red')
+
+                    # Add m/z labels on top of each peak
+                    for mz, intensity in zip(mz_list, intensity_list):
+                        if intensity > max(intensity_list) * 0.05:  # Optional: only label peaks > 5% max intensity
+                            ax1.text(mz, intensity, f'{mz:.4f}',ha='center')
+                    ax1.set_xlabel('m/z')
+                    ax1.set_title('MS/MS Spectrum ({0})'.format(peak['ms2'][0]['file_name']))
+
             self.figure.tight_layout()
+            self.canvas.draw()
         except Exception as e:
             import traceback
             print(f"Caught an exception: {e}")
             traceback.print_exc()
 
     def table_to_df(self):
+        if self.peaks_res is None:
+            QMessageBox.warning(self, "Export failed",
+                                "No peak data. Please process peak data first.")
+            return
         # Create a DataFrame from the complete dataset
         headers = ['mz', 'rt', 's/n', 'max_i', 'compound'] + [os.path.splitext(os.path.basename(file))[0] for file in
                                                               self.file_list]
@@ -675,18 +753,18 @@ class MainWindow(QtWidgets.QMainWindow):
         df = pd.DataFrame(data, columns=headers)
         return df
 
-    def export_to_excel(self):
+    def export_to_csv(self):
         df = self.table_to_df()
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
-        fileName, _ = QFileDialog.getSaveFileName(self, "Save File", "", "Excel Files (*.xlsx)",
+        fileName, _ = QFileDialog.getSaveFileName(self, "Save File", "", "CSV Files (*.csv)",
                                                   options=options)
 
         if fileName:
-            if not fileName.endswith('.xlsx'):  # Add .pkd extension if it's not there
-                fileName += '.xlsx'
+            if not fileName.endswith('.csv'):
+                fileName += '.csv'
             self.textEdit.append("Start exporting. This process may be time-consuming. Don't close the window!")
-            df.to_excel(fileName, index=False)
+            df.to_csv(fileName, index=False)
             self.textEdit.append('{0} exported successfully.'.format(fileName))
 
     def export_pickle(self):
@@ -707,6 +785,34 @@ class MainWindow(QtWidgets.QMainWindow):
             with open(fileName, 'wb') as f:
                 pickle.dump(self.peaks_res, f)
                 pickle.dump(self.file_list, f)
+            self.textEdit.append('{0} exported successfully.'.format(fileName))
+
+    def export_ms2(self):
+        if self.peaks_res is None:
+            QMessageBox.warning(self, "Export failed",
+                                "No peak data. Please process peak data first.")
+            return
+        options = QFileDialog.Options()
+        options |= QFileDialog.DontUseNativeDialog
+        fileName, _ = QFileDialog.getSaveFileName(self, "Save File", "", "MS/MS Files (*.mgf)",
+                                                  options=options)
+
+        if fileName:
+            if not fileName.endswith('.mgf'):
+                fileName += '.mgf'
+            self.textEdit.append("Start exporting. This process may be time-consuming. Don't close the window!")
+            with open(fileName, 'w') as f:
+                for _t, cur_peak in enumerate(self.peaks_res):
+                    if cur_peak['ms2']:
+                        for cur_spec in cur_peak['ms2']:
+                            f.write("BEGIN IONS\n")
+                            f.write(f"PEPMASS={cur_spec['precursor_mz']}\n")
+                            f.write("CHARGE=\n")
+                            f.write(
+                                f"TITLE=feature_id {_t + 1} feature_mz: {cur_peak['mz']} feature_rt: {cur_peak['rt']} origin_file: {cur_spec['file_name']}\n")
+                            for _m, _i in zip(cur_spec['mz_list'], cur_spec['intensity_list']):
+                                f.write(f"{_m} {_i}\n")
+                            f.write("END IONS\n\n")
             self.textEdit.append('{0} exported successfully.'.format(fileName))
 
     def import_pickle(self):

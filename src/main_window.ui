@@ -137,7 +137,7 @@
            <item>
             <widget class="QTableWidget" name="tableWidget">
              <property name="columnCount">
-              <number>3</number>
+              <number>4</number>
              </property>
              <attribute name="horizontalHeaderCascadingSectionResizes">
               <bool>false</bool>
@@ -158,6 +158,11 @@
              <column>
               <property name="text">
                <string>Blank</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>MS/MS</string>
               </property>
              </column>
             </widget>
@@ -807,7 +812,7 @@
                  </size>
                 </property>
                 <property name="text">
-                 <string>Export feature data (*.xlsx)</string>
+                 <string>Export feature data (*.csv)</string>
                 </property>
                </widget>
               </item>
@@ -821,6 +826,13 @@
                 </property>
                 <property name="text">
                  <string>Export feature data (*.pkd)</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QPushButton" name="pushButton_14">
+                <property name="text">
+                 <string>Export MS/MS (*.mgf)</string>
                 </property>
                </widget>
               </item>

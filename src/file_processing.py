@@ -1,5 +1,7 @@
 from pyopenms import *
 import numpy as np
+import os
+import pandas as pd
 
 
 def spectrum_to_vector(mz, intensity, min_mz=100, max_mz=1000, bin_width=0.5):
@@ -43,6 +45,16 @@ class ms1scan:
     def __init__(self, mz, i):
         self.mz = mz.astype(np.float32)
         self.i = i.astype(np.float32)
+
+
+# class ms2scan:
+#     # MS2 scan
+#     def __init__(self, file_name, precursor_mz, retention_time, mz_list, intensity_list):
+#         self.file_name = file_name
+#         self.precursor_mz = precursor_mz
+#         self.retention_time = retention_time
+#         self.mz_list = mz_list.astype(np.float32)
+#         self.intensity_list = intensity_list.astype(np.float32)
 
 
 class MsFile:
@@ -103,6 +115,33 @@ class MsFile:
         elif new_path.endswith('.mzXML'):
             MzXMLFile().load(new_path, tmp_exp)
         print(new_path, 'stored.')
+
+
+def parse_ms2_files(ms2_file_list):
+    ms2_spectra_list = []
+    for filepath in ms2_file_list:
+        b_filepath = os.path.basename(filepath)
+        reader = MSExperiment()
+        if filepath.endswith('.mzML'):
+            MzMLFile().load(filepath, reader)
+        elif filepath.endswith('.mzXML'):
+            MzXMLFile().load(filepath, reader)
+        for scan in reader:
+            if scan.getMSLevel() == 2:
+                precursor_mz = scan.getPrecursors()[0].getMZ()
+                retention_time = scan.getRT()
+                mz_list, intensity_list = scan.get_peaks()
+
+                ms2_spectra_list.append({
+                    'file_name': b_filepath,
+                    'precursor_mz': precursor_mz,
+                    'retention_time': retention_time,
+                    'mz_list': mz_list.astype(np.float32),
+                    'intensity_list': intensity_list.astype(np.float32)
+                })
+
+    ms2_df = pd.DataFrame(ms2_spectra_list)
+    return ms2_df
 
 
 if __name__ == '__main__':
