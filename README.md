@@ -33,6 +33,7 @@ Detailed information about the algorithm and parameters are available in our art
 - [The importance of raw data alignment](#The-importance-of-raw-data-alignment)
 - [Potential solutions for poor alignment](#Potential-solutions-for-poor-alignment)
 - [Important notes](#Important-notes)
+- [Update notes](#Update-notes)
 
 ## Software interface
 
@@ -271,3 +272,10 @@ Users can lower the parameter **"Entropy coefficient"** to decrease the threshol
 3. The alignment algorithm is not capable of handling compound-level deviations. If such cases are frequent in the data, the results of these features should be reviewed or removed.
 4. If multiple features (more than 5) with different orders of magnitude are close in time, the lower-intensity feature may be obscured by the algorithm.
 5. We welcome any discussions, feedback, or suggestions! Feel free to open an issue or start a discussion on our [Issues](https://github.com/JunYang2021/MetCohort/issues) page.
+
+
+## Update notes
+
+- (2025.6.18) MS/MS display feature has been added in the software. Users can upload the DDA MS/MS files in processing and the 
+program will automatically match the MS/MS spectra for each detected LC-MS feature. The spectra can be displayed in the window and exported
+in a *.mgf file.
