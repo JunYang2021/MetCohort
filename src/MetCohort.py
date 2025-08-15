@@ -404,18 +404,19 @@ class MainWindow(QtWidgets.QMainWindow):
         self.stackedWidget.setCurrentIndex(i)
 
     def browse_files(self):
-        self.file_list.clear()
-        self.qc_file_list.clear()
-        self.blank_file_list.clear()
-        self.ms2_file_list.clear()
+        # Users can add files when click 'Browse', if want to remove the added files, users need to close the window
+        # self.file_list.clear()
+        # self.qc_file_list.clear()
+        # self.blank_file_list.clear()
+        # self.ms2_file_list.clear()
         self.exps = {}
         self.peaks_res = None
         self.file_loader = None
         self.correction_thread = None
         self.peak_detection_thread = None
-        self.comboBox.clear()
-        self.comboBox_4.clear()
-        self.tableWidget.setRowCount(0)
+        # self.comboBox.clear()
+        # self.comboBox_4.clear()
+        # self.tableWidget.setRowCount(0)
 
         file_dialog = QFileDialog()
         files, _ = file_dialog.getOpenFileNames(self,
