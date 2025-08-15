@@ -1,5 +1,6 @@
 # MetCohort
-![](./images/logo.png "MetCohort")
+<img src="./images/logo.png" alt="MetCohort" width="300">
+
 
 ![GitHub License](https://img.shields.io/github/license/JunYang2021/MetCohort)
 ![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/JunYang2021/MetCohort/total?color=green)
